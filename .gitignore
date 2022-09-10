@@ -1,0 +1,13 @@
+node_modules
+test/
+*.lock
+package-lock.json
+config/
+ecosystem.config.js
+.vscode/
+.idea/
+log/
+# *.sh
+*.log
+out.js
+dist/

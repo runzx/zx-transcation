@@ -1,0 +1,12 @@
+{
+  "name": "zx-tx",
+  "version": "1.0.0",
+  "description": "mongoose transaction",
+  "main": "index.js",
+  "author": "zhaix <zx@B450>",
+  "license": "MIT",
+  "type": "module",
+  "dependencies": {
+    "mongoose": "^6.6.0"
+  }
+}
