@@ -26,7 +26,7 @@ const mmId = t.insert("User", { name: "mm" })
 t.increment("User", zxId, { points: 100 })
 t.increment("User", zxId, { points: "-20" })
 t.increment("User", mmId, { points: "20.0" })
-t.increment("User", "flakId", { points: "-20" })
+t.increment("User", "fakeId", { points: "-20" })
 try {
   t.run()
 } catch (e) {
