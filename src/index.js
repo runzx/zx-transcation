@@ -13,9 +13,8 @@ export class Transaction {
   transactionId = ''
   operations = []
 
-  constructor(useDb = false) {
+  constructor(useDb) {
     this.useDb = useDb
-    // this.transactionId = ''
   }
 
   insert(modelName, { _id, ...data }, options = {}) {

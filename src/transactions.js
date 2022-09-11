@@ -4,9 +4,9 @@
  */
 import mongoose from "mongoose"
 
-const { models, Types } = mongoose
+const { models, Types, model, Schema } = mongoose
 const { ObjectId } = Types
-export { ObjectId }
+export { mongoose, model, ObjectId }
 
 export const Status = {
   pending: 'Pending',
@@ -28,11 +28,9 @@ export const Operation = {
   status: Status.pending,
 }
 
-const { model, Schema } = mongoose
-const { Mixed, Decimal128, } = Schema.Types
-export { mongoose, model, }
-
 const modelName = 'TransactionModel'
+
+const { Mixed, Decimal128, } = Schema.Types
 
 const schema = new Schema({
   operations: [],
