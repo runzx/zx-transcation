@@ -1,7 +1,7 @@
 # mongoose 单机 实现 事务处理
 
 1. 主要可靠实现 create, increment, remove
-2. 此流程不能锁表, update 在并发时 rollback 回滚 后可能数据不正确 (update出错到回滚间如并发有修改操作，则会丢失此部分)
+2. 此流程不能锁表, update 在并发时 rollback 回滚 后可能数据不正确 (update 出错到回滚间如并发有修改操作，则会丢失此部分)
 3. 事务流程可以记录 在数据库中(`TransactionModel`), 可通过此回滚
 4. modelName 集合要先定义
 
@@ -67,17 +67,19 @@ const transId = await transaction.saveOperations()
 // 读取 记录
 await transaction.loadDbTransaction(transId)
 ```
+
 ### operation
+
 ```js
 Operation = {
-  type: 'insert',  // 'insert', 'update', 'remove', 'increment'
-  rollbackType: 'remove',  // execute for rollback type: 'remove', 'update', 'insert' ('increment' -> 'update')
-  model: {},  // mongoose model instance
-  modelName: 'User',  // mongoose model name
+  type: "insert", // 'insert', 'update', 'remove', 'increment'
+  rollbackType: "remove", // execute for rollback type: 'remove', 'update', 'insert' ('increment' -> 'update')
+  model: {}, // mongoose model instance
+  modelName: "User", // mongoose model name
   oldModel: null, // 'mongoose model instance beforce transcation if exists',
-  findId: 'xxx', // ObjectId
+  findId: "xxx", // ObjectId
   data: {},
-  options: {},  // query options, {new: false}
+  options: {}, // query options, {new: false}
   status: Status.pending,
 }
 
