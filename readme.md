@@ -85,3 +85,7 @@ Operation = {
 
 Status = ["Pending", "Success", "Error", "Rollback", "ErrRollback"]
 ```
+
+### 参考
+
+1. ["mongoose-transactions"](https://github.com/daton89-topperblues/mongoose-transactions)
