@@ -58,4 +58,28 @@ async function start() {
   console.log(res)
 }
 start()
+
+// 事务记录
+const transaction = new Transaction(true)
+const transId = await transaction.getTransactionId()
+// 保存 记录
+const transId = await transaction.saveOperations()
+// 读取 记录
+await transaction.loadDbTransaction(transId)
+```
+### operation
+```js
+Operation = {
+  type: 'insert',  // 'insert', 'update', 'remove', 'increment'
+  rollbackType: 'remove',  // execute for rollback type: 'remove', 'update', 'insert' ('increment' -> 'update')
+  model: {},  // mongoose model instance
+  modelName: 'User',  // mongoose model name
+  oldModel: null, // 'mongoose model instance beforce transcation if exists',
+  findId: 'xxx', // ObjectId
+  data: {},
+  options: {},  // query options, {new: false}
+  status: Status.pending,
+}
+
+Status = ["Pending", "Success", "Error", "Rollback", "ErrRollback"]
 ```
