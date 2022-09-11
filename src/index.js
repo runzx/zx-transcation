@@ -5,7 +5,8 @@
  * update 如果在此流程中有其它并发修改操作，rollback可能不正确
  */
 
-import { mongoose, ObjectId, Deferred, Status, TransactionModel, } from "./transactions.js"
+import { mongoose, Schema, ObjectId, Deferred, Status, TransactionModel, } from "./transactions.js"
+export { mongoose, Schema }
 
 export class Transaction {
   rollbackIndex = 0
@@ -143,7 +144,7 @@ export class Transaction {
   }
   async findByIdTransaction(model, findId) {
     return await model.findById(findId)
-      .lean() // 回的文档是普通 javascript 对象
+      .lean() // 返回的文档是普通 javascript 对象
       .exec()
   }
   updateTransaction(model, id, data, options = { new: false }) {

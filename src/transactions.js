@@ -6,7 +6,7 @@ import mongoose from "mongoose"
 
 const { models, Types, model, Schema } = mongoose
 const { ObjectId } = Types
-export { mongoose, model, ObjectId }
+export { mongoose, model, ObjectId, Schema }
 
 export const Status = {
   pending: 'Pending',
