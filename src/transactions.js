@@ -2,7 +2,11 @@
  * 翟享20220910 
  * 解决 mongodb 单机不能事务 
  */
-import mongoose, { models } from "mongoose"
+import mongoose from "mongoose"
+
+const { models, Types } = mongoose
+const { ObjectId } = Types
+export { ObjectId }
 
 export const Status = {
   pending: 'Pending',
@@ -13,20 +17,20 @@ export const Status = {
 }
 
 export const Operation = {
-  type: 'transaction type string',
-  rollbackType: 'execute for rollback type',
-  model: 'object mongoose model instance',
-  modelName: 'mongoose model name',
+  type: 'insert',  // 'insert', 'update', 'remove', 'increment'
+  rollbackType: 'remove',  // execute for rollback type: 'remove', 'update', 'insert' ('increment' -> 'update')
+  model: {},  // mongoose model instance
+  modelName: 'User',  // mongoose model name
   oldModel: null, // 'mongoose model instance beforce transcation if exists',
-  findId: 'The _id of the Doc',
-  data: 'any The data',
-  options: {},  // 'any query options',
+  findId: 'xxx', // ObjectId
+  data: {},
+  options: {},  // query options, {new: false}
   status: Status.pending,
 }
 
 const { model, Schema } = mongoose
-const { Mixed, ObjectId, Decimal128, } = Schema.Types
-export { mongoose, model, ObjectId }
+const { Mixed, Decimal128, } = Schema.Types
+export { mongoose, model, }
 
 const modelName = 'TransactionModel'
 

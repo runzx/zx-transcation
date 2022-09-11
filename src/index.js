@@ -1,10 +1,11 @@
 /**
  * 翟享20220910 
  * 解决 mongodb 单机不能事务 
+ * increment 可以在并发增加计算中 rollback 原始数据; data 里值 一定要能转为数值
+ * update 如果在此流程中有其它并发修改操作，rollback可能不正确
  */
 
-import { Deferred, mongoose, ObjectId, Operation, Status, TransactionModel } from "./transactions.js"
-
+import { mongoose, ObjectId, Deferred, Status, TransactionModel, } from "./transactions.js"
 
 export class Transaction {
   rollbackIndex = 0
@@ -19,7 +20,7 @@ export class Transaction {
 
   insert(modelName, { _id, ...data }, options = {}) {
     const model = mongoose.model(modelName)
-    if (!_id) _id = ObjectId()
+    if (!_id) _id = new ObjectId()
     this.operations.push({
       rollbackType: 'remove', type: 'insert',
       findId: _id, data: { _id, ...data }, model, modelName, options,
@@ -33,6 +34,30 @@ export class Transaction {
     const operation = {
       rollbackType: 'update', type: 'update',
       findId, data, model, modelName, options,
+      oldModel: null, status: Status.pending
+    }
+    this.operations.push(operation)
+    return operation
+  }
+  // $inc 增加计算; data: {prop1: num}
+  increment(modelName, findId, data, options = {}) {
+    const model = mongoose.model(modelName)
+    let flag = false, err = [], _data = {}
+    Object.entries(data).forEach(([key, value]) => {
+      if (isNaN(value)) {
+        flag = true
+        const msg = `data[${key}] isNaN: ${value}`
+        err.push(msg)
+        console.log(msg)
+      } else {
+        data[key] = +value
+        _data[key] = -value
+      }
+    })
+    if (flag) throw new Error(err.join(';'))
+    const operation = {
+      rollbackType: 'update', type: 'increment',
+      findId, data, model, modelName, options, _data,
       oldModel: null, status: Status.pending
     }
     this.operations.push(operation)
@@ -54,38 +79,45 @@ export class Transaction {
     if (this.useDb && this.transactionId === '') await this.createTransaction()
     const final = []
 
-    return this.operations.reduce((promise, transaction, index) => promise.then(async res => {
-      let operation
-      const { type, model, data, findId, options } = transaction
-      switch (type) {
-        case 'insert':
-          operation = this.insertTransaction(model, data)
-          break;
-        case 'update':
-          operation = this.findByIdTransaction(model, findId).then(findRes => {
-            transaction.oldModel = findRes
-            return this.updateTransaction(model, findId, data, options)
-          })
-          break;
-        case 'remove':
-          operation = this.findByIdTransaction(model, findId).then(findRes => {
-            transaction.oldModel = findRes
-            return this.removeTransaction(model, findId)
-          })
-          break;
-      }
-      return operation.then(async query => {
-        this.rollbackIndex = index
-        this.updateOperationStatus(Status.success, index)
-        if (index === this.operations.length - 1) await this.updateDbTransaction(Status.success)
-        final.push(query)
-        return final
-      }).catch(async err => {
-        this.updateOperationStatus(Status.error, index)
-        await this.updateDbTransaction(Status.error)
-        throw err
+    return this.operations.reduce(
+      (promise, transaction, index) => promise.then(async res => {
+        let operation
+        const { type, model, data, findId, options } = transaction
+        switch (type) {
+          case 'insert':
+            operation = this.insertTransaction(model, data)
+            break;
+          case 'update':
+            operation = this.findByIdTransaction(model, findId).then(findRes => {
+              transaction.oldModel = findRes
+              return this.updateTransaction(model, findId, data, options)
+            })
+            break;
+          case 'remove':
+            operation = this.findByIdTransaction(model, findId).then(findRes => {
+              transaction.oldModel = findRes
+              return this.removeTransaction(model, findId)
+            })
+            break;
+          case 'increment':
+            transaction.oldModel = { $inc: transaction._data }
+            operation = this.updateTransaction(model, findId, { $inc: data }, options)
+            break;
+        }
+        return operation.then(async query => {
+          this.rollbackIndex = index
+          this.updateOperationStatus(Status.success, index)
+          if (index === this.operations.length - 1) await this.updateDbTransaction(Status.success)
+          final.push(query)
+          return final
+        }).catch(async err => {
+          this.updateOperationStatus(Status.error, index)
+          await this.updateDbTransaction(Status.error)
+          throw err
+        })
       })
-    }), Promise.resolve([]))
+      , Promise.resolve([])
+    )
   }
 
   async createTransaction() {
@@ -160,32 +192,38 @@ export class Transaction {
     }
     const final = []
 
-    return transactionToRollback.reduce((promise, transaction, index) => promise.then(res => {
-      let operation
-      const { rollbackType, oldModel, type, model, data, findId, options } = transaction
-      switch (rollbackType) {
-        case 'insert':
-          operation = this.insertTransaction(model, oldModel)
-          break;
-        case 'update':
-          operation = this.updateTransaction(model, findId, oldModel)
-          break;
-        case 'remove':
-          operation = this.removeTransaction(model, findId)
-          break;
-      }
-      return operation.then(async query => {
-        this.rollbackIndex--
-        this.updateOperationStatus(Status.rollback, index)
-        if (index === this.operations.length - 1) await this.updateDbTransaction(Status.rollback)
-        final.push(query)
-        return final
-      }).catch(async err => {
-        this.updateOperationStatus(Status.errRollback, index)
-        await this.updateDbTransaction(Status.errRollback)
-        throw err
+    return transactionToRollback.reduce(
+      (promise, transaction, index) => promise.then(res => {
+        let operation
+        const { rollbackType, oldModel, type, model, data, findId, options } = transaction
+        switch (rollbackType) {
+          case 'insert':
+            operation = this.insertTransaction(model, oldModel)
+            break;
+          case 'update':
+            operation = this.updateTransaction(model, findId, oldModel)
+            break;
+          case 'remove':
+            operation = this.removeTransaction(model, findId)
+            break;
+          // case 'increment':
+          //   operation = this.updateTransaction(model, findId, { $inc: data }, options)
+          //   break;
+        }
+        return operation.then(async query => {
+          this.rollbackIndex--
+          this.updateOperationStatus(Status.rollback, index)
+          if (index === this.operations.length - 1) await this.updateDbTransaction(Status.rollback)
+          final.push(query)
+          return final
+        }).catch(async err => {
+          this.updateOperationStatus(Status.errRollback, index)
+          await this.updateDbTransaction(Status.errRollback)
+          throw err
+        })
       })
-    }))
+      , Promise.resolve([])
+    )
   }
 
   async clean() {
